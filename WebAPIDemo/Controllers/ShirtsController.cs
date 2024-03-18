@@ -1,7 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebAPIDemo.Filters;
-using WebAPIDemo.Filters.ActionFilters;
-using WebAPIDemo.Filters.ExceptionFilters;
 using LibraryDemo.Models;
 using WebAPIDemo.Repositories;
 
@@ -13,7 +10,7 @@ namespace WebAPIDemo.Controllers
     {
         private readonly ShirtRepository _shirtRepository;
 
-        public ShirtsController(ShirtRepository shirtRepository)
+		public ShirtsController(ShirtRepository shirtRepository)
         {
             _shirtRepository = shirtRepository;
         }
@@ -57,5 +54,13 @@ namespace WebAPIDemo.Controllers
             _shirtRepository.DeleteShirt(id);
             return Ok(shirt);
         }
-    }
+
+		[HttpPut("patch/{id}")]
+		public IActionResult PatchShirt(int id, Shirt shirt)
+		{
+			_shirtRepository.PatchShirtRank(id, shirt.rank);
+			return NoContent();
+		}
+
+	}
 }

@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using WebAPIDemo.Controllers;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WebAPIDemo.Data;
 using LibraryDemo.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPIDemo.Repositories
 {
@@ -18,19 +15,6 @@ namespace WebAPIDemo.Repositories
         {
             _context = context;
         }
-        // public static void Initialize(DataContext context)
-        // {
-        //     _context = context;
-        // }
-
-
-        /*private static List<Shirt> shirts = new List<Shirt>()
-        {
-            new Shirt{ ShirtId = 1, Brand = "My Brand", Color = "Blue", Gender = "Men", price = 30, Size = 10},
-            new Shirt{ ShirtId = 2, Brand = "My Brand", Color = "Black", Gender = "Men", price = 35, Size = 12},
-            new Shirt{ ShirtId = 3, Brand = "Your Brand", Color = "Pink", Gender = "WoMen", price = 28, Size = 8},
-            new Shirt{ ShirtId = 4, Brand = "Your Brand", Color = "Yello", Gender = "WoMen", price = 30, Size = 9}
-        };*/
 
 
         public List<Shirt> GetShirts()
@@ -69,24 +53,6 @@ namespace WebAPIDemo.Repositories
             {
                 throw new InvalidOperationException("ShirtRepository has not been initialized. Call Initialize method first.");
             }
-            /*return _context.Shirts.FirstOrDefault(x =>
-                x.Brand.Equals(brand, StringComparison.OrdinalIgnoreCase) &&
-                x.Gender.Equals(gender, StringComparison.OrdinalIgnoreCase) &&
-                x.Color.Equals(color, StringComparison.OrdinalIgnoreCase) &&
-                x.Size == size);*/
-            /*return _context.Shirts.FirstOrDefault(x =>
-                !string.IsNullOrWhiteSpace(brand) &&
-                !string.IsNullOrWhiteSpace(x.Brand) &&
-                x.Brand.Equals(brand, StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(gender) &&
-                !string.IsNullOrWhiteSpace(x.Gender) &&
-                x.Gender.Equals(gender, StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(color) &&
-                !string.IsNullOrWhiteSpace(x.Color) &&
-                x.Color.Equals(color, StringComparison.OrdinalIgnoreCase) &&
-                size.HasValue &&
-                x.Size.HasValue &&
-                size.Value == x.Size.Value);*/
 
             return _context.Shirts.FirstOrDefault(x =>
         !string.IsNullOrWhiteSpace(brand) &&
@@ -112,7 +78,11 @@ namespace WebAPIDemo.Repositories
             /*int maxId = shirts.Max(x => x.ShirtId);
             shirt.ShirtId = maxId +1 ;
             shirts.Add(shirt);*/
-            _context.Shirts.Add(shirt);
+
+			shirt.rank = _context.Shirts.Max(shirt => shirt.rank) + 1;
+
+
+			_context.Shirts.Add(shirt);
             _context.SaveChanges();
         }
 
@@ -122,13 +92,6 @@ namespace WebAPIDemo.Repositories
             {
                 throw new InvalidOperationException("ShirtRepository has not been initialized. Call Initialize method first.");
             }
-            /*var shirtToUpdate = shirts.First(x => x.ShirtId == shirt.ShirtId);
-            shirtToUpdate.Brand = shirt.Brand;
-            shirtToUpdate.price = shirt.price;
-            shirtToUpdate.Size = shirt.Size;
-            shirtToUpdate.Color = shirt.Color;
-            shirtToUpdate.Gender = shirt.Gender;*/
-
             // Detach any previously tracked entity with the same key
             var existingEntry = _context.ChangeTracker.Entries<Shirt>().FirstOrDefault(e => e.Entity.ShirtId == shirt.ShirtId);
             if (existingEntry != null)
@@ -136,8 +99,10 @@ namespace WebAPIDemo.Repositories
                 existingEntry.State = EntityState.Detached;
             }
 
-            // Attach and mark the new entity as modified
-            _context.Shirts.Attach(shirt);
+            shirt.rank = _context.Shirts.Where(x => x.ShirtId == shirt.ShirtId).Select(x => x.rank).Single();
+
+			// Attach and mark the new entity as modified
+			_context.Shirts.Attach(shirt);
             _context.Entry(shirt).State = EntityState.Modified;
 
             // Save changes to apply the updates
@@ -157,10 +122,12 @@ namespace WebAPIDemo.Repositories
             }*/
 
             var shirt = GetShirtById(shirtId);
+            
             if (shirt != null)
             {
-                // Inspect the state of the shirt entity
-                var entry = _context.Entry(shirt);
+				int rank = shirt.rank;
+				// Inspect the state of the shirt entity
+				var entry = _context.Entry(shirt);
                 Console.WriteLine($"State before deletion: {entry.State}");
 
                 _context.Shirts.Remove(shirt);
@@ -168,9 +135,32 @@ namespace WebAPIDemo.Repositories
                 // Inspect the state again after marking for deletion
                 Console.WriteLine($"State after marking for deletion: {entry.State}");
 
-                // Save changes to apply the deletion
-                _context.SaveChanges();
+				// Retrieve shirts with rank greater than 'rank'
+				var shirtsToUpdate = _context.Shirts.Where(x => x.rank > rank).ToList();
+				// Decrement rank for each shirt
+				foreach (var shi in shirtsToUpdate)
+				{
+					shi.rank--;
+				}
+
+				// Save changes to apply the deletion
+				_context.SaveChanges();
             }
         }
-    }
+
+		public void PatchShirtRank(int shirtId, int newRank)
+		{
+			if (_context == null)
+			{
+				throw new InvalidOperationException("ShirtRepository has not been initialized. Call Initialize method first.");
+			}
+
+			var shirt = _context.Shirts.FirstOrDefault(x => x.ShirtId == shirtId);
+
+			shirt.rank = newRank;
+
+			_context.SaveChanges();
+		}
+
+	}
 }
